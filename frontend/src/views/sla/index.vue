@@ -31,12 +31,17 @@
       <thead>
         <tr>
           <th v-for="column in columns" :key="column">{{ column }}</th>
+          <th>基线风险</th>
           <th>可执行动作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
+          <td>
+            <span class="tag" :class="riskClass(String(row['风险等级'] ?? ''))">{{ riskLabel(row) }}</span>
+            <span v-if="riskCommit(row)" class="tag">承诺 {{ riskCommit(row) }}</span>
+          </td>
           <td class="row-actions">
             <button
               v-for="action in actions"
@@ -50,7 +55,7 @@
           </td>
         </tr>
         <tr v-if="!rows.length">
-          <td :colspan="columns.length + 1" class="empty-state">暂无SLA告警管理数据，可先登记SLA规则</td>
+          <td :colspan="columns.length + 2" class="empty-state">暂无SLA告警管理数据，可先登记SLA规则</td>
         </tr>
       </tbody>
     </table>
@@ -81,6 +86,12 @@ const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
 
+function riskClass(level: string) {
+  if (level === '高') return 'tag-bad'
+  if (level === '中') return 'tag-warn'
+  return 'tag-ok'
+}
+
 function resetFilters() {
   filters.value = {}
   void reload()
@@ -92,6 +103,21 @@ function exportRows() {
 
 function openCreate() {
   errorMessage.value = 'SLA规则登记入口尚未接入审批流'
+}
+
+function riskRecord(row: Row): Record<string, unknown> {
+  const value = row['基线风险']
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function riskLabel(row: Row) {
+  const risk = riskRecord(row)
+  if (!row['风险等级']) return String(row['风险重算状态'] ?? '待推演')
+  return `${row['风险等级']}风险 · ${risk.baseline ?? ''}`
+}
+
+function riskCommit(row: Row) {
+  return riskRecord(row)['earliest_commit'] ?? ''
 }
 
 async function runAction(action: string, row: Row) {

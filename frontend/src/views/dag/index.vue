@@ -31,12 +31,20 @@
       <thead>
         <tr>
           <th v-for="column in columns" :key="column">{{ column }}</th>
+          <th>基线回执</th>
           <th>可执行动作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
+          <td>
+            <span class="tag" :class="receiptClass(row)">{{ receiptLabel(row) }}</span>
+            <span v-if="receipt(row).slack_min !== undefined" class="tag">
+              松弛 {{ receipt(row).slack_min }} 分
+            </span>
+            <span v-if="receipt(row).last_action" class="tag">{{ receipt(row).last_action }}</span>
+          </td>
           <td class="row-actions">
             <button
               v-for="action in actions"
@@ -50,7 +58,7 @@
           </td>
         </tr>
         <tr v-if="!rows.length">
-          <td :colspan="columns.length + 1" class="empty-state">暂无任务依赖编排数据，可先登记依赖图节点</td>
+          <td :colspan="columns.length + 2" class="empty-state">暂无任务依赖编排数据，可先登记依赖图节点</td>
         </tr>
       </tbody>
     </table>
@@ -80,6 +88,22 @@ const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+
+function receipt(row: Row): Record<string, unknown> {
+  const value = row['基线回执']
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function receiptLabel(row: Row) {
+  const value = receipt(row)
+  if (!value.baseline) return '未推演'
+  return `${value.baseline} · ${value.critical ? '关键路径' : '非关键'}`
+}
+
+function receiptClass(row: Row) {
+  if (!row['基线回执']) return ''
+  return receipt(row).zero_slack ? 'tag-bad' : 'tag-ok'
+}
 
 function resetFilters() {
   filters.value = {}

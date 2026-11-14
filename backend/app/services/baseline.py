@@ -7,6 +7,15 @@ from app.store import store
 
 MODULE = "baseline"
 REQUIRED_FIELDS = ["基线编号", "基线名称", "承诺时间"]
+OPTIONAL_FIELDS = [
+    "关键路径",
+    "关键路径等级",
+    "依赖范围",
+    "预警时间",
+    "预警提前分钟",
+    "最近产出",
+    "监控状态",
+]
 STATUS_ORDER = ["草稿", "监控中", "已延期", "已关闭"]
 ACTION_RULES = {"启用监控": "草稿", "调整基线": "监控中", "关闭基线": "已延期"}
 NEGATIVE_ACTIONS = []
@@ -40,6 +49,11 @@ class BaselineService:
         rows = store.rows(MODULE)
         entry = {"id": max((int(row.get("id", 0)) for row in rows), default=0) + 1}
         entry.update({field: values.get(field) for field in REQUIRED_FIELDS})
+        # 关键路径、依赖范围、等级这些字段决定能不能推演，登记时一并收下来。
+        entry.update(
+            {field: values.get(field) for field in OPTIONAL_FIELDS if values.get(field) is not None}
+        )
+        entry.setdefault("推演状态", "待推演")
         entry["status"] = STATUS_ORDER[0]
         entry["pending"] = True
         entry["abnormal"] = False

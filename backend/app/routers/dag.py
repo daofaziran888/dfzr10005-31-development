@@ -30,6 +30,17 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/receipts", response_model=dict)
+def list_receipts(
+    baseline: str | None = Query(default=None, description="按基线编号过滤"),
+) -> dict[str, Any]:
+    """DAG 节点清单里的基线回执：推演结论与最近一次基线动作同步。"""
+    from app.services.baseline_time import derivation_service
+
+    rows = derivation_service.dag_receipts(baseline=baseline)
+    return {"total": len(rows), "items": rows}
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条依赖图节点明细；不存在时给出可读的错误说明。"""
